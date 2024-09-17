@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas 繪圖與保存</title>
+    <style>
+        /* Loading 畫面的樣式 */
+        #loading {
+            display: none; /* 初始隱藏 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            text-align: center;
+            padding-top: 20%;
+            font-size: 24px;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading 畫面 -->
+    <div id="loading">書法字體生成中，請稍候...</div>
+
+    <h2>滑鼠繪圖</h2>
+    
+    <!-- 文件上傳輸入框 -->
+    <input type="file" id="upload" accept="image/*">
+    
+    <!--顯示 Canvas 畫布-->
+    <div id="canvas_div" style="overflow-x: auto;">
+        <canvas id="canvas" width="256" height="256" style="border: 1px solid black;"></canvas>
+        <button onclick="javascript:clearArea();return false;">清除畫布</button>
+        
+        <form id="imageForm" action="save_image.php" method="post" style="display: none;">
+            <input type="hidden" name="imageData" id="imageData">
+        </form>
+
+        Line width : <select id="selWidth">
+            <option value="9">9</option>
+            <option value="7" selected="selected">7</option>
+            <option value="5">5</option>
+        </select>
+        
+        Color : <select id="selColor">
+            <option value="black" selected="selected">black</option>
+            <option value="blue">blue</option>
+            <option value="red">red</option>
+            <option value="green">green</option>
+            <option value="yellow">yellow</option>
+            <option value="gray">gray</option>
+        </select>
+    </div>
+    <button id="saveBtn">生成書法字</button>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const upload = document.getElementById('upload');
+
+        // 設置畫布背景為白色
+        context.fillStyle = '#FFFFFF';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        let isDrawing = false;
+        let x = 0;
+        let y = 0;
+        var offsetX;
+        var offsetY;
+
+        function startup() {
+            canvas.addEventListener('touchstart', handleStart);
+            canvas.addEventListener('touchend', handleEnd);
+            canvas.addEventListener('touchcancel', handleCancel);
+            canvas.addEventListener('touchmove', handleMove);
+            canvas.addEventListener('mousedown', (e) => {
+                x = e.offsetX;
+                y = e.offsetY;
+                isDrawing = true;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDrawing) {
+                    drawLine(context, x, y, e.offsetX, e.offsetY);
+                    x = e.offsetX;
+                    y = e.offsetY;
+                }
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                if (isDrawing) {
+                    drawLine(context, x, y, e.offsetX, e.offsetY);
+                    x = 0;
+                    y = 0;
+                    isDrawing = false;
+                }
+            });
+
+            // 上傳圖片後設置 Canvas 大小並繪製圖片
+            upload.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            // 設置 Canvas 的寬度和高度與圖片一致
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            // 繪製圖片到 Canvas
+                            context.drawImage(img, 0, 0);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", startup);
+
+        const ongoingTouches = [];
+
+        function handleStart(evt) {
+            evt.preventDefault();
+            const touches = evt.changedTouches;
+            offsetX = canvas.getBoundingClientRect().left;
+            offsetY = canvas.getBoundingClientRect().top;
+            for (let i = 0; i < touches.length; i++) {
+                ongoingTouches.push(copyTouch(touches[i]));
+            }
+        }
+
+        function handleMove(evt) {
+            evt.preventDefault();
+            const touches = evt.changedTouches;
+            for (let i = 0; i < touches.length; i++) {
+                const color = document.getElementById('selColor').value;
+                const idx = ongoingTouchIndexById(touches[i].identifier);
+                if (idx >= 0) {
+                    context.beginPath();
+                    context.moveTo(ongoingTouches[idx].clientX - offsetX, ongoingTouches[idx].clientY - offsetY);
+                    context.lineTo(touches[i].clientX - offsetX, touches[i].clientY - offsetY);
+                    context.lineWidth = document.getElementById('selWidth').value;
+                    context.strokeStyle = color;
+                    context.closePath();
+                    context.stroke();
+                    ongoingTouches.splice(idx, 1, copyTouch(touches[i]));  // swap in the new touch record
+                }
+            }
+        }
+
+        function handleEnd(evt) {
+            evt.preventDefault();
+            const touches = evt.changedTouches;
+            for (let i = 0; i < touches.length; i++) {
+                const color = document.getElementById('selColor').value;
+                let idx = ongoingTouchIndexById(touches[i].identifier);
+                if (idx >= 0) {
+                    context.lineWidth = document.getElementById('selWidth').value;
+                    context.fillStyle = color;
+                    ongoingTouches.splice(idx, 1);  // remove it; we're done
+                }
+            }
+        }
+
+        function handleCancel(evt) {
+            evt.preventDefault();
+            const touches = evt.changedTouches;
+            for (let i = 0; i < touches.length; i++) {
+                let idx = ongoingTouchIndexById(touches[i].identifier);
+                ongoingTouches.splice(idx, 1);  // remove it; we're done
+            }
+        }
+
+        function copyTouch({ identifier, clientX, clientY }) {
+            return { identifier, clientX, clientY };
+        }
+
+        function ongoingTouchIndexById(idToFind) {
+            for (let i = 0; i < ongoingTouches.length; i++) {
+                const id = ongoingTouches[i].identifier;
+                if (id === idToFind) {
+                    return i;
+                }
+            }
+            return -1;    // not found
+        }
+
+        function drawLine(context, x1, y1, x2, y2) {
+            context.beginPath();
+            context.strokeStyle = 'black';
+            
+            context.lineWidth = document.getElementById('selWidth').value;
+            context.lineJoin = "round";
+            context.moveTo(x1, y1);
+            context.lineTo(x2, y2);
+            context.closePath();
+            context.stroke();
+        }
+
+        function clearArea() {
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        }
+
+        // 保存圖片
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            var dataURL = canvas.toDataURL('image/png'); // 將 Canvas 畫布轉換為圖片資料URL
+            document.getElementById('loading').style.display = 'block'; // 顯示 loading 畫面
+            console.log('dataURL:', dataURL); // 添加這行來檢查 dataURL
+            document.getElementById('imageData').value = dataURL; // 將圖片數據設置到隱藏的表單字段中
+            document.getElementById('imageForm').submit(); // 提交表單
+        });
+    </script>
+</body>
+</html>

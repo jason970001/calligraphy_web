@@ -1,0 +1,25 @@
+<canvas id="myCanvas" width="300" height="300">
+    Your browser does not support the HTML5 canvas tag.
+</canvas>
+
+<!-- 隱藏的表單 -->
+<form id="imageForm" action="test.php" method="post">
+    <input type="hidden" name="imageData" id="imageData">
+    <input type="submit" value="儲存圖片">
+</form>
+
+<script>
+    // 獲取畫布和上下文
+    var canvas = document.getElementById('myCanvas');
+    var context = canvas.getContext('2d');
+
+    // 在畫布上繪製內容（例如畫一個矩形）
+    context.fillStyle = 'red';
+    context.fillRect(50, 50, 200, 200);
+
+    // 將畫布內容轉換為 Base64 編碼的圖片數據
+    var imageData = canvas.toDataURL('image/png'); // 默認為 PNG 格式
+
+    // 將 Base64 編碼的圖片數據設置到隱藏的表單字段中
+    document.getElementById('imageData').value = imageData;
+</script>

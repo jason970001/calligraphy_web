@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>圖片上傳</title>
+    <style>
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-gap: 20px;
+        }
+        .gallery img {
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+<h2>圖片庫</h2>
+
+<div class="gallery">
+    <?php foreach ($files as $file) : ?>
+        <?php $imageFileType = strtolower(pathinfo($file, PATHINFO_EXTENSION)); ?>
+        <?php if (in_array($imageFileType, array("png", "jpeg", "jpg", "gif"))) : ?>
+            <div class="gallery-item">
+                <img src="<?php echo $directory . $file; ?>" alt="<?php echo $file; ?>">
+                <button onclick="downloadImage('<?php echo $directory . $file; ?>')">下載</button>
+                <br> <!-- 添加空行 -->
+            </div>
+        <?php endif; ?>
+    <?php endforeach; ?> 
+</div>
+<br> <!-- 添加空行 -->
+<button id="prevBtn">上一張</button>
+<button id="nextBtn">下一張</button>
+
+<script>
+    var currentIndex = 0;
+    var galleryItems = document.querySelectorAll('.gallery-item');
+
+    function showImage(index) {
+        if (index < 0) {
+            index = galleryItems.length - 1;
+        } else if (index >= galleryItems.length) {
+            index = 0;
+        }
+
+        galleryItems.forEach(function(item, i) {
+            item.style.display = (i === index) ? 'block' : 'none';
+        });
+
+        currentIndex = index;
+    }
+
+    function downloadImage(url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = url.split('/').pop();
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', function() {
+        showImage(currentIndex - 1);
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', function() {
+        showImage(currentIndex + 1);
+    });
+
+    // 初始化顯示第一張圖片
+    showImage(0);
+</script>
+</body>
+</html>
