@@ -32,7 +32,7 @@
     
     <!--顯示 Canvas 畫布-->
     <div id="canvas_div" style="overflow-x: auto;">
-        <canvas id="canvas" width="256" height="256" style="border: 1px solid black;"></canvas>
+        <canvas id="canvas" width="512" height="512" style="border: 1px solid black;"></canvas>
         <button onclick="javascript:clearArea();return false;">清除畫布</button>
         
         <form id="imageForm" action="save_image.php" method="post" style="display: none;">
@@ -107,11 +107,26 @@
                     reader.onload = (e) => {
                         const img = new Image();
                         img.onload = () => {
-                            // 設置 Canvas 的寬度和高度與圖片一致
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            // 繪製圖片到 Canvas
-                            context.drawImage(img, 0, 0);
+                            // 創建一個臨時 Canvas
+                            const tempCanvas = document.createElement('canvas');
+                            const tempCtx = tempCanvas.getContext('2d');
+                            tempCanvas.width = 512;
+                            tempCanvas.height = 512;
+                            // 繪製圖片到臨時 Canvas 並調整大小到 512x512
+                            tempCtx.drawImage(img, 0, 0, 512, 512);
+
+                            // 將調整大小後的圖片數據繪製到主 Canvas
+                            canvas.width = 512;
+                            canvas.height = 512;
+                            context.clearRect(0, 0, canvas.width, canvas.height);
+                            context.drawImage(tempCanvas, 0, 0, 512, 512);
+
+                            // 將調整大小後的圖片數據轉換為 base64
+                            const imageData = canvas.toDataURL('image/png');
+                            document.getElementById('imageData').value = imageData;
+
+                            // 提交表單
+                            document.getElementById('imageForm').submit();
                         };
                         img.src = e.target.result;
                     };

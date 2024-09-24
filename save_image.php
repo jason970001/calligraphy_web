@@ -91,7 +91,7 @@ $files = array_diff($files, array('.', '..'));
             grid-gap: 20px;
         }
         .gallery img {
-            width: 100%;
+            width: 200%;
             height: auto;
         }
     </style>
